@@ -25,7 +25,7 @@ function replaceText(element, word) {
     //   console.log("element is ", element);
       element.childNodes.forEach(childNode => replaceText(childNode, word));
     } else if (element.nodeType === Text.TEXT_NODE) {
-        console.log("Element is", element);
+        // console.log("Element is", element);
         if (element.textContent.includes(word)) {
             console.log("Red element is", element);
             setToRed(element)
