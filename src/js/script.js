@@ -1,22 +1,37 @@
-import hello from "./popup/example";
+// import hello from "./popup/example";
 
 // hello()
 // alert("script pager")
 // replaceText(document.body, "fire");
-console.log("script page");
-const bdy = document.body;
-export default function findText(word) {
-  replaceText(bdy, word);
-}
+// console.log("script page");
+// const bdy = document.body;
+// export default function findText(word) {
+//   replaceText(bdy, word);
+// }
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-  console.log(
-    sender.tab
-      ? "from a content script:" + sender.tab.url
-      : "from the extension"
-  );
-  sendToServer(request.greeting);
-  if (request.greeting === "hello") sendResponse({ farewell: "goodbye" });
+chrome.runtime.onConnect.addListener(function (port) {
+  port.onMessage.addListener(async function (request) {
+    console.log("request", request);
+    // guard clause
+    if (request.messageToLookFor !== undefined) {
+      console.log("message to look for", request.messageToLookFor);
+      console.log("back arrow window to find", window.find(request.messageToLookFor.split('\n')[0]));
+      return;
+    }
+
+    // console.log(
+    //   sender.tab
+    //     ? "from a content script:" + sender.tab.url
+    //     : "from the extension"
+    // );
+    // sendToServer(request.greeting).then((result) => {
+    //   sendResponse({ farewell: result });
+    // })
+    var result = await sendToPythonServerGetResult(request.greeting, port);
+    console.log("result pls", result);
+    // send reponse to extension
+    port.postMessage({ results: result });
+  });
 });
 
 function replaceText(element, word) {
@@ -45,9 +60,9 @@ function setIdOfElement(element, id) {
   // console.log(element);
 }
 
-function sendToServer(text) {
+async function sendToPythonServerGetResult(text) {
   // sends text to  server
-  const response = fetch("http://127.0.0.1:8000/send/", {
+  const response = await fetch("http://127.0.0.1:8000/send/", {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -56,20 +71,26 @@ function sendToServer(text) {
     body: JSON.stringify({ query: text, url: document.URL }),
   });
   console.log("url", document.URL);
-  response.then((data) => {
-    //   console.log(data.json());
-    data.json().then((data1) => {
-      console.log("response from server", data1.test);
-      // replaceText(document.body, data1.test.slice(0, 10));
-      console.log("was message found: ", window.find(data1.test.split("\n")[0]));
-      // for (let i = 10; i > 0; i--) {
-      //   console.log("substring", i*5)
-      //   if (window.find(data1.test.slice(0, i * 5))) {
-      //     console.log(`was message found at substring: ${i * 5}`);
-      //   }
-      // }
-    });
-  });
+  // response.then(async function (data) {
+  //   console.log(data.json());
+  const resultsArray = await response.json();
+  console.log("response from server", resultsArray.test);
+  // replaceText(document.body, data1.test.slice(0, 10));
+  console.log(
+    "was message found: ",
+    window.find(resultsArray.test[0].split("\n")[0])
+  );
+  return resultsArray.test;
+  // for (let i = 10; i > 0; i--) {
+  //   console.log("substring", i*5)
+  //   if (window.find(data1.test.slice(0, i * 5))) {
+  //     console.log(`was message found at substring: ${i * 5}`);
+  //   }
+  // }
+  // });
+  // }).then(function (data3) {
+  //   return data3
+  // });
 }
 
 function setToRed(element) {
